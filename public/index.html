@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Landing Cloner</title>
+  <style>
+    :root{--bg:#111;--panel:#1c1c1c;--line:#383838;--text:#f5f5f5;--muted:#a3a3a3;--accent:#d6adf2;--coral:#ee9a7d}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#3a2943 0,transparent 29%),var(--bg);color:var(--text);font:15px Inter,Arial,sans-serif;min-height:100vh}.wrap{width:min(800px,calc(100% - 32px));margin:auto;padding:88px 0}h1{font-size:clamp(42px,7vw,72px);letter-spacing:-.075em;line-height:.95;margin:0 0 19px}h1 span{color:var(--accent)}p{color:var(--muted);font-size:16px;line-height:1.55;max-width:610px}.card{background:#191919;border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:38px;box-shadow:0 20px 70px #0005}label{display:block;font-size:13px;font-weight:600;margin-bottom:8px}input{width:100%;background:#101010;border:1px solid #4a4a4a;border-radius:10px;padding:15px;color:#fff;font:15px ui-monospace,monospace;outline:none}input:focus{border-color:var(--accent)}.check{display:flex;gap:10px;align-items:flex-start;color:#b4b4b4;font-size:13px;line-height:1.45;margin:17px 0}.check input{width:17px;height:17px;margin:1px 0 0;accent-color:var(--accent)}button,a.button{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:#f0f0f0;color:#151515;padding:13px 19px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none}button:disabled{opacity:.6;cursor:wait}.row{display:flex;gap:11px;align-items:center;flex-wrap:wrap}.status{margin:18px 0 0;font-size:13px;color:var(--muted);min-height:18px}.status.error{color:var(--coral)}.status.ok{color:#aee28c}.captures{margin-top:38px;border-top:1px solid var(--line);padding-top:24px}.captures h2{font-size:14px;margin:0 0 15px}.capture{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:13px 0;border-top:1px solid #292929}.capture:first-of-type{border-top:0}.capture code{color:#c7c7c7;font-size:12px}.links{display:flex;gap:11px;flex-wrap:wrap}.links a{color:var(--coral);font-size:13px;text-decoration:none}.hint{font-size:12px;color:#777;margin-top:18px}@media(max-width:540px){.wrap{padding-top:55px}.card{padding:17px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Clone landing<br><span>yang kamu miliki.</span></h1>
+    <p>Capture HTML publik, aset yang termuat, screenshot desktop/mobile, lalu unduh bundle lokal untuk inspeksi dan rekonstruksi frontend.</p>
+    <form class="card" id="form">
+      <label for="url">URL landing page</label>
+      <input id="url" name="url" type="url" placeholder="https://example.com" required />
+      <label class="check"><input id="authorized" type="checkbox" required /><span>Saya memiliki situs ini atau izin eksplisit untuk menyalin frontend publiknya.</span></label>
+      <div class="row"><button id="submit" type="submit">Capture landing <span>&nbsp;↓</span></button></div>
+      <div class="status" id="status"></div>
+      <div class="hint">Batas awal: HTML publik, aset termuat, screenshot. Backend, login, token, API privat tidak disalin.</div>
+    </form>
+    <section class="captures"><h2>Capture lokal</h2><div id="list">Memuat…</div></section>
+  </main>
+  <script>
+    const form=document.querySelector('#form'), status=document.querySelector('#status'), submit=document.querySelector('#submit'), list=document.querySelector('#list');
+    const esc=(s)=>s.replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function load(){const r=await fetch('/api/captures'),items=await r.json();list.innerHTML=items.length?items.map(n=>`<div class="capture"><code>${esc(n)}</code><div class="links"><a href="/output/${encodeURIComponent(n)}/" target="_blank">Preview</a><a href="/output/${encodeURIComponent(n)}/desktop.png" target="_blank">Desktop</a><a href="/output/${encodeURIComponent(n)}/mobile.png" target="_blank">Mobile</a><a href="/api/export/${encodeURIComponent(n)}">ZIP</a><a href="#" data-delete="${esc(n)}">Hapus</a></div></div>`).join(''):'Belum ada capture.'}
+    list.addEventListener('click',async(e)=>{const name=e.target.dataset.delete;if(!name)return;e.preventDefault();if(!confirm(`Hapus ${name}? File capture tidak bisa dikembalikan.`))return;const r=await fetch(`/api/captures/${encodeURIComponent(name)}`,{method:'DELETE'});if(!r.ok){status.className='status error';status.textContent='Gagal menghapus capture.';return}await load()});
+    form.addEventListener('submit',async(e)=>{e.preventDefault();submit.disabled=true;status.className='status';status.textContent='Browser sedang merender, mengambil aset, lalu membuat screenshot…';try{const r=await fetch('/api/capture',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url:url.value,authorized:authorized.checked})}),data=await r.json();if(!r.ok)throw Error(data.error);status.className='status ok';status.textContent=`Selesai: ${data.title||data.name}. ${data.assets} aset tersimpan.`;await load()}catch(error){status.className='status error';status.textContent=error.message}finally{submit.disabled=false}});load();
+  </script>
+</body>
+</html>
